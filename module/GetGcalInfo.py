@@ -39,15 +39,15 @@ class GetGcalInfo:
         self.config = config
         self.logger = getLogger(__name__)
 
-    def get_gcal_info(self, calendar_id, timeMin, timeMax):
+    def get_gcal_info(self, calendar_id):
         """google calendarデータを取得する"""
 
         credentials = self.get_credentials()
         http = credentials.authorize(httplib2.Http())
         service = discovery.build('calendar', 'v3', http=http)
 
-        # _timeMin = datetime.datetime.utcnow() - datetime.timedelta(days=int(self.config['RETRIEVE']['EVENT_DAYS_FROM']))
-        # timeMin = _timeMin.isoformat() + 'Z'
+        _timeMin = datetime.datetime.utcnow() - datetime.timedelta(days=int(self.config['RETRIEVE']['EVENT_DAYS_FROM']))
+        timeMin = _timeMin.isoformat() + 'Z'
 
         try:
             eventsResult = service.events().list(
