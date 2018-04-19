@@ -11,8 +11,7 @@ from apiclient import discovery
 from oauth2client import client
 from oauth2client import tools
 from oauth2client.file import Storage
-
-import datetime
+import datetime as dt
 
 # gcal_manager.GetGcalInfo
 # Date: 2018/04/14
@@ -39,19 +38,19 @@ class GetGcalInfo:
         self.config = config
         self.logger = getLogger(__name__)
 
-    def get_gcal_info(self, calendar_id):
+    def get_gcal_info(self, calendar_id, time_min, time_max):
         """google calendarデータを取得する"""
 
         credentials = self.get_credentials()
         http = credentials.authorize(httplib2.Http())
         service = discovery.build('calendar', 'v3', http=http)
 
-        _timeMin = datetime.datetime.utcnow() - datetime.timedelta(days=int(self.config['RETRIEVE']['EVENT_DAYS_FROM']))
-        timeMin = _timeMin.isoformat() + 'Z'
+        time_min = (time_min - dt.timedelta(hours=9)).isoformat() + 'Z'
+        time_max = (time_max - dt.timedelta(hours=9)).isoformat() + 'Z'
 
         try:
             eventsResult = service.events().list(
-                calendarId=calendar_id, timeMin=timeMin, singleEvents=True,
+                calendarId=calendar_id, timeMin=time_min, timeMax=time_max, singleEvents=True,
                 orderBy='startTime').execute()
             events = eventsResult.get('items', [])
 
@@ -60,6 +59,21 @@ class GetGcalInfo:
             events = []
 
         return events
+
+    @staticmethod
+    def get_time_min_max():
+        """集計の開始・終了時刻の取得"""
+        # 土曜日始まり！！
+
+        # time_minの生成
+        now = dt.datetime.now()
+        _year, _month, _day = now.year, now.month, now.day
+        days_diff = (now.weekday() + 2) % 7
+        saturday = dt.datetime(_year, _month, _day) - dt.timedelta(days=days_diff)
+        time_min = saturday
+        time_max = saturday + dt.timedelta(days=7)
+
+        return time_min, time_max
 
     @staticmethod
     def get_credentials():

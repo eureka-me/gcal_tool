@@ -35,19 +35,24 @@ config.read_file(open('./config.conf', 'r', encoding='UTF-8'))
 GetGcalInfo = ggi.GetGcalInfo(config)
 ProcessGcalData = pgd.ProcessGcalData(config)
 
-# Google Calendar情報の取得
+# 期間の取得
+time_min, time_max = GetGcalInfo.get_time_min_max()
 
-# work_plan_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['WORK_PLAN_CAL_ID'])
-work_result_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['WORK_RESULT_CAL_ID'])
+# Google Calendar情報の取得
+work_plan_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['WORK_PLAN_CAL_ID'],
+                                           time_min=time_min, time_max=time_max)
+work_result_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['WORK_RESULT_CAL_ID'],
+                                             time_min=time_min, time_max=time_max)
 # life_plan_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['LIFE_PLAN_CAL_ID'])
-life_result_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['LIFE_RESULT_CAL_ID'])
+life_result_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['LIFE_RESULT_CAL_ID'],
+                                             time_min=time_min, time_max=time_max)
 
 # 各カテゴリに対する時間投入量の集計し、csvファイルを出力（Life）
-if ProcessGcalData.summarize_work_life_result(work_result_info=work_result_info,
-                                              life_result_info=life_result_info):
+ProcessGcalData.output_work_life_result(work_result_info=work_result_info, life_result_info=life_result_info,
+                                        time_min=time_min, time_max=time_max)
 
-    # もし前回の状態から変化があったら、HTMLファイルを更新
-    ProcessGcalData.update_summarize_work_life_result_html()
+ProcessGcalData.output_work_plan_result(work_plan_info=work_plan_info, work_result_info=work_result_info,
+                                        time_min=time_min, time_max=time_max)
 
 
 

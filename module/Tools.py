@@ -18,7 +18,7 @@ class Tools:
 
     def get_category_dic(self):
 
-        dic = defaultdict(dict)
+        dic, abbr_display = defaultdict(dict), []
         with open(self.config['GENERAL']['CATEGORY_DIC_FILE_PATH'], 'r') as f:
 
             reader = csv.reader(f)
@@ -30,5 +30,6 @@ class Tools:
                 for variable in variables:
                     dic[variable]['abbr'] = row[ix['abbr']]
                     dic[variable]['note'] = row[ix['note']]
+                abbr_display.append((row[ix['abbr']], int(row[ix['disp_order']])))
 
-        return dic
+        return dic, [_abbr[0] for _abbr in sorted(abbr_display, key=lambda x: x[1])]
