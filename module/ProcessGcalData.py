@@ -273,9 +273,9 @@ class ProcessGcalData:
     @staticmethod
     def decide_category(event):
         cate_list = event['summary'].split('/')
-        if cate_list[0] == 'w':
+        if cate_list[0] in ['w', 'W']:
             return 'work'
-        elif cate_list[0] in ['l', 's', 'fw', 'i']:
+        elif cate_list[0] in ['l', 's', 'fw', 'i', 'L', 'S', 'Fw', 'I']:
             return 'private'
         elif event['summary'] in ['睡眠']:
             return 'sleep'
@@ -294,7 +294,9 @@ class ProcessGcalData:
         return (base_datetime - _date).seconds // 60
 
     def update_life_timeline(self, tl_dic, time_min, time_max):
-        pass
+
+        color_dic = {'work': 'rgb(218,98,144)', 'private': 'rgb(243,199,89)',
+                     'other': 'rgb(164,197,32)', 'sleep': 'rgb(69,161,207)'}
 
         data = []
         for cate, _dic in tl_dic.items():
@@ -304,7 +306,11 @@ class ProcessGcalData:
                     x=_dic['date'],
                     base=_dic['base'],
                     # orientation='h',
-                    name=cate
+                    name=cate,
+                    marker=dict(
+                        color=color_dic[cate],
+                    ),
+                    opacity=0.8
                 )
             )
 
@@ -313,7 +319,15 @@ class ProcessGcalData:
                                                    (time_max - dt.timedelta(days=1)).strftime('%Y/%m/%d(%a)')),
             barmode='stack',
             # legend=dict(orientation='h'),
-            margin={'t': 100, 'b': 100}
+            margin={'t': 100, 'b': 100},
+            yaxis=dict(
+                autorange='reversed',
+                tickvals=list(range(0, 1500, 60)),
+                ticktext=list(range(0, 25)),
+                gridcolor='rgb(97,97,97)',
+                gridwidth=0.5,
+                ),
+
         )
 
         fig = go.Figure(data=data, layout=layout)
