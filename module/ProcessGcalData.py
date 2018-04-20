@@ -111,7 +111,7 @@ class ProcessGcalData:
         )
 
         fig = go.Figure(data=data, layout=layout)
-        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'test2.html', auto_open=False)
+        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'life_work_result.html', auto_open=False)
 
     def output_work_plan_result(self, work_plan_info, work_result_info, time_min, time_max):
         """仕事に関する項目に関して予定時間に対する実績時間の進捗状況を集計し、htmlファイルを出力"""
@@ -192,7 +192,6 @@ class ProcessGcalData:
         for _x in sorted(x):
             table.append([_x, abbr_note_dic[_x]])
         fig = ff.create_table(table, height_constant=table_height)
-        # fig = go.Figure(data=trace_table)
 
         fig['data'].extend(go.Data([trace_r, trace_p]))
         fig.layout.yaxis.update({'domain': [0, table_domain]})
@@ -232,4 +231,89 @@ class ProcessGcalData:
 
         return labels
 
+    def output_life_timeline(self, work_result_info, life_result_info, time_min, time_max):
+        tl_dic = self.summarize_life_timeline(work_result_info=work_result_info, life_result_info=life_result_info)
+        self.update_life_timeline(tl_dic, time_min, time_max)
+
+    def summarize_life_timeline(self, work_result_info, life_result_info):
+
+        # まずは1日単位に分割
+        events = work_result_info + life_result_info
+        _first_date = min([self.Tools.convert_datetime(event['end']['dateTime'])
+                           for event in events if 'dateTime' in event['end']])
+        first_date = dt.datetime(_first_date.year, _first_date.month, _first_date.day)
+
+        _st_time, _en_time = first_date, first_date + dt.timedelta(days=1)
+        date_event_dic = defaultdict(list)
+        while _st_time < first_date + dt.timedelta(days=7):
+            for event in events:
+                if 'dateTime' not in event['start']:
+                    continue
+
+                st_time = self.Tools.convert_datetime(event['start']['dateTime'])
+                en_time = self.Tools.convert_datetime(event['end']['dateTime'])
+                if (_st_time <= st_time < _en_time) or (_st_time < en_time <= _en_time):
+                    date_event_dic[_st_time].append(event)
+
+            _st_time += dt.timedelta(days=1)
+            _en_time += dt.timedelta(days=1)
+
+        tl_dic = defaultdict(lambda: {'date': [], 'length': [], 'base': []})
+        for _date, events in date_event_dic.items():
+            for event in events:
+                cate = self.decide_category(event)
+                length = self.get_length(_date, event)
+                base = self.get_base(_date, event)
+                tl_dic[cate]['date'].append(_date.strftime('%m-%d'))
+                tl_dic[cate]['length'].append(length)
+                tl_dic[cate]['base'].append(base)
+
+        return tl_dic
+
+    @staticmethod
+    def decide_category(event):
+        cate_list = event['summary'].split('/')
+        if cate_list[0] == 'w':
+            return 'work'
+        elif cate_list[0] in ['l', 's', 'fw', 'i']:
+            return 'private'
+        elif event['summary'] in ['睡眠']:
+            return 'sleep'
+        else:
+            return 'other'
+
+    def get_length(self, _date, event):
+        st_time = self.Tools.convert_datetime(event['start']['dateTime'])
+        en_time = self.Tools.convert_datetime(event['end']['dateTime'])
+        length_time = min(en_time, _date + dt.timedelta(days=1)) - max(st_time, _date)
+        return int(length_time.seconds // 60)
+
+    def get_base(self, _date, event):
+        st_time = self.Tools.convert_datetime(event['start']['dateTime'])
+        base_datetime = max(st_time, _date)
+        return (base_datetime - _date).seconds // 60
+
+    def update_life_timeline(self, tl_dic, time_min, time_max):
+        pass
+
+        data = []
+        for cate, _dic in tl_dic.items():
+            data.append(
+                go.Bar(
+                    y=_dic['length'],
+                    x=_dic['date'],
+                    base=_dic['base'],
+                    # orientation='h',
+                    name=cate
+                )
+            )
+
+        layout = go.Layout(
+            title='time input<br>{0}-{1}'.format(time_min.strftime('%Y/%m/%d(%a)'),
+                                                   (time_max - dt.timedelta(days=1)).strftime('%Y/%m/%d(%a)')),
+            barmode='stack'
+        )
+
+        fig = go.Figure(data=data, layout=layout)
+        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'life_timeline.html', auto_open=False)
 

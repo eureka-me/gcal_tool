@@ -54,5 +54,5 @@ ProcessGcalData.output_work_life_result(work_result_info=work_result_info, life_
 ProcessGcalData.output_work_plan_result(work_plan_info=work_plan_info, work_result_info=work_result_info,
                                         time_min=time_min, time_max=time_max)
 
-
-
+ProcessGcalData.output_life_timeline(work_result_info=work_result_info, life_result_info=life_result_info,
+                                     time_min=time_min, time_max=time_max)

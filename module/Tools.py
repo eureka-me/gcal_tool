@@ -3,6 +3,7 @@
 
 from collections import defaultdict
 import csv
+import datetime as dt
 
 # gcal_manager.Tools
 # Date: 2018/04/16
@@ -33,3 +34,7 @@ class Tools:
                 abbr_display.append((row[ix['abbr']], int(row[ix['disp_order']])))
 
         return dic, [_abbr[0] for _abbr in sorted(abbr_display, key=lambda x: x[1])]
+
+    @staticmethod
+    def convert_datetime(datetime_str):
+        return dt.datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S+09:00')
