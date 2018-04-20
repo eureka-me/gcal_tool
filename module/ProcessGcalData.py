@@ -111,7 +111,7 @@ class ProcessGcalData:
         )
 
         fig = go.Figure(data=data, layout=layout)
-        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'test2.html', auto_open=False)
+        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'life_work_result.html', auto_open=False)
 
     def output_work_plan_result(self, work_plan_info, work_result_info, time_min, time_max):
         """仕事に関する項目に関して予定時間に対する実績時間の進捗状況を集計し、htmlファイルを出力"""
