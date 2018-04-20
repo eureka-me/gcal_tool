@@ -264,7 +264,7 @@ class ProcessGcalData:
                 cate = self.decide_category(event)
                 length = self.get_length(_date, event)
                 base = self.get_base(_date, event)
-                tl_dic[cate]['date'].append(_date.strftime('%m-%d'))
+                tl_dic[cate]['date'].append(_date.strftime('%m-%d(%a)'))
                 tl_dic[cate]['length'].append(length)
                 tl_dic[cate]['base'].append(base)
 
@@ -311,7 +311,9 @@ class ProcessGcalData:
         layout = go.Layout(
             title='time input<br>{0}-{1}'.format(time_min.strftime('%Y/%m/%d(%a)'),
                                                    (time_max - dt.timedelta(days=1)).strftime('%Y/%m/%d(%a)')),
-            barmode='stack'
+            barmode='stack',
+            # legend=dict(orientation='h'),
+            margin={'t': 100, 'b': 100}
         )
 
         fig = go.Figure(data=data, layout=layout)

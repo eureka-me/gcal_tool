@@ -13,6 +13,8 @@ from oauth2client import tools
 from oauth2client.file import Storage
 import datetime as dt
 
+from module import Tools
+
 # gcal_manager.GetGcalInfo
 # Date: 2018/04/14
 # Filename: GetGcalInfo
@@ -37,6 +39,7 @@ class GetGcalInfo:
     def __init__(self, config):
         self.config = config
         self.logger = getLogger(__name__)
+        self.Tools = Tools.Tools(config)
 
     def get_gcal_info(self, calendar_id, time_min, time_max):
         """google calendarデータを取得する"""
@@ -45,12 +48,12 @@ class GetGcalInfo:
         http = credentials.authorize(httplib2.Http())
         service = discovery.build('calendar', 'v3', http=http)
 
-        time_min = (time_min - dt.timedelta(hours=9)).isoformat() + 'Z'
-        time_max = (time_max - dt.timedelta(hours=9)).isoformat() + 'Z'
+        _time_min = (time_min - dt.timedelta(hours=9+6)).isoformat() + 'Z'
+        _time_max = (time_max - dt.timedelta(hours=9)).isoformat() + 'Z'
 
         try:
             eventsResult = service.events().list(
-                calendarId=calendar_id, timeMin=time_min, timeMax=time_max, singleEvents=True,
+                calendarId=calendar_id, timeMin=_time_min, timeMax=_time_max, singleEvents=True,
                 orderBy='startTime').execute()
             events = eventsResult.get('items', [])
 
@@ -58,7 +61,20 @@ class GetGcalInfo:
             self.logger.error(e)
             events = []
 
-        return events
+        _events = []
+        for event in events:
+            if 'dateTime' not in event['start']:
+                continue
+
+            st_time = self.Tools.convert_datetime(event['start']['dateTime'])
+            en_time = self.Tools.convert_datetime(event['end']['dateTime'])
+            if time_min <= st_time < time_max:
+                _events.append(event)
+            elif time_min < en_time <= time_max:
+                event['start']['dateTime'] = time_min.strftime('%Y-%m-%dT%H:%M:%S+09:00')
+                _events.append(event)
+
+        return _events
 
     @staticmethod
     def get_time_min_max():
