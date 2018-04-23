@@ -9,6 +9,7 @@ from module import Tools
 import plotly.offline as po
 import plotly.graph_objs as go
 import plotly.figure_factory as ff
+import textwrap
 
 # gcal_manager.ProcessGcalData
 # Date: 2018/04/14
@@ -116,9 +117,10 @@ class ProcessGcalData:
     def output_work_plan_result(self, work_plan_info, work_result_info, time_min, time_max):
         """仕事に関する項目に関して予定時間に対する実績時間の進捗状況を集計し、htmlファイルを出力"""
 
-        update, plan_dic, result_dic, abbr_note_dic = self.summarize_work_plan_result(work_plan_info, work_result_info)
+        update, plan_dic, result_dic, abbr_note_dic, complete_tasks\
+            = self.summarize_work_plan_result(work_plan_info, work_result_info)
         if update:
-            self.update_work_plan_result_html(plan_dic, result_dic, time_min, time_max, abbr_note_dic)
+            self.update_work_plan_result_html(plan_dic, result_dic, time_min, time_max, abbr_note_dic, complete_tasks)
 
     def summarize_work_plan_result(self, work_plan_info, work_result_info):
         """仕事に関する各項目に対する予定時間に対する実績時間の進捗状況を集計し、csv出力"""
@@ -126,9 +128,10 @@ class ProcessGcalData:
         plan_dic = self.summarize_calendar_info(calendar_info=work_plan_info, cate_scope=2, dic=defaultdict(float))
         result_dic = self.summarize_calendar_info(calendar_info=work_result_info, cate_scope=2, dic=defaultdict(float))
         abbr_note_dic = self.get_abbr_note_dic(work_plan_info=work_plan_info, work_result_info=work_result_info)
+        complete_tasks = self.get_complete_tasks(work_result_info=work_result_info)
 
         # TODO: カレンダー情報に更新があったかどうかの判定機能
-        return True, plan_dic, result_dic, abbr_note_dic
+        return True, plan_dic, result_dic, abbr_note_dic, complete_tasks
 
     @staticmethod
     def get_abbr_note_dic(work_plan_info, work_result_info):
@@ -151,7 +154,18 @@ class ProcessGcalData:
 
         return dic
 
-    def update_work_plan_result_html(self, plan_dic, result_dic, time_min, time_max, abbr_note_dic):
+    def get_complete_tasks(self, work_result_info):
+
+        complete_tasks = []
+        for event in work_result_info:
+            _event = event['summary'].split('/')
+            if _event[0] != 'w':
+                continue
+            if '@d@' in event['summary']:
+                complete_tasks.append(_event[1])
+        return complete_tasks
+
+    def update_work_plan_result_html(self, plan_dic, result_dic, time_min, time_max, abbr_note_dic, complete_tasks):
         """htmlファイルを更新"""
 
         x = sorted(list(set([k[1] for k in plan_dic.keys() if k[0] == 'w']
@@ -163,7 +177,7 @@ class ProcessGcalData:
 
         trace_p = go.Bar(
             x=y_p,
-            y=x,
+            y=[self.twrap(_x + ', ' + abbr_note_dic[_x]) for _x in x],
             text=self.format_value_label(y_p),
             textposition='auto',
             marker=dict(color='rgb(158,202,225)', line=dict(color='rgb(8,48,107)', width=1.5), ),
@@ -175,14 +189,16 @@ class ProcessGcalData:
 
         trace_r = go.Bar(
             x=y_r,
-            y=x,
+            y=[self.twrap(_x+ ', ' + abbr_note_dic[_x]) for _x in x],
             text=['{0},{1}'.format(r, p) for r, p in zip(self.format_value_label(y_r), y_progress)],
             textposition='auto',
-            marker=dict(color='rgb(255,200,132)', line=dict(color='rgb(165,100,12)', width=1.5), ),
+            marker=dict(color=['rgb(255,200,132)' if _x in complete_tasks else 'rgb(255,255,255)' for _x in x],
+                        line=dict(color='rgb(165,100,12)',
+                                  width=1.5), ),
             opacity=0.6,
             name='result',
             orientation='h',
-            xaxis='x2', yaxis='y2'
+            xaxis='x2', yaxis='y2',
         )
 
         table_domain = float(self.config['PROCESS']['TABLE_DOMAIN'])
@@ -205,7 +221,7 @@ class ProcessGcalData:
                            'legend': dict(orientation='h')
                            })
 
-        fig.layout.margin.update({'t': 100, 'r': 30, 'l': 30})
+        fig.layout.margin.update({'t': 100, 'r': 30, 'l': 100})
         fig.layout.update({'title': 'plan result<br>{0}-{1}<br>{2}h {3}min / {4}h {5}min ({6}%)'
                           .format(time_min.strftime('%Y/%m/%d(%a)'),
                                   (time_max - dt.timedelta(days=1)).strftime('%m/%d(%a)'),
@@ -333,3 +349,7 @@ class ProcessGcalData:
         fig = go.Figure(data=data, layout=layout)
         po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'life_timeline.html', auto_open=False)
 
+    @staticmethod
+    def twrap(txt):
+        txtlist = textwrap.wrap(txt, width=8)
+        return '<br>'.join(txtlist)
