@@ -275,7 +275,7 @@ class ProcessGcalData:
         cate_list = event['summary'].split('/')
         if cate_list[0] in ['w', 'W']:
             return 'work'
-        elif cate_list[0] in ['l', 's', 'fw', 'i', 'L', 'S', 'Fw', 'I']:
+        elif cate_list[0] in ['l', 's', 'fw', 'i', 'L', 'S', 'Fw', 'I', 'F']:
             return 'private'
         elif event['summary'] in ['睡眠']:
             return 'sleep'
