@@ -125,10 +125,12 @@ class ProcessGcalData:
     def summarize_work_plan_result(self, work_plan_info, work_result_info):
         """仕事に関する各項目に対する予定時間に対する実績時間の進捗状況を集計し、csv出力"""
 
+        complete_tasks, work_result_info = self.get_complete_tasks(work_result_info=work_result_info)
+
         plan_dic = self.summarize_calendar_info(calendar_info=work_plan_info, cate_scope=2, dic=defaultdict(float))
         result_dic = self.summarize_calendar_info(calendar_info=work_result_info, cate_scope=2, dic=defaultdict(float))
+
         abbr_note_dic = self.get_abbr_note_dic(work_plan_info=work_plan_info, work_result_info=work_result_info)
-        complete_tasks = self.get_complete_tasks(work_result_info=work_result_info)
 
         # TODO: カレンダー情報に更新があったかどうかの判定機能
         return True, plan_dic, result_dic, abbr_note_dic, complete_tasks
@@ -154,16 +156,19 @@ class ProcessGcalData:
 
         return dic
 
-    def get_complete_tasks(self, work_result_info):
+    @staticmethod
+    def get_complete_tasks(work_result_info):
 
         complete_tasks = []
-        for event in work_result_info:
+        for i, event in enumerate(work_result_info):
             _event = event['summary'].split('/')
             if _event[0] != 'w':
                 continue
             if '@d@' in event['summary']:
                 complete_tasks.append(_event[1])
-        return complete_tasks
+                work_result_info[i]['summary'] = work_result_info[i]['summary'].replace('@d@', '')
+
+        return complete_tasks, work_result_info
 
     def update_work_plan_result_html(self, plan_dic, result_dic, time_min, time_max, abbr_note_dic, complete_tasks):
         """htmlファイルを更新"""
