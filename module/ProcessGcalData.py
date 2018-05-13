@@ -20,10 +20,11 @@ __date__ = "2018/04/14"
 
 
 class ProcessGcalData:
-    def __init__(self, config):
+    def __init__(self, config, week):
         self.config = config
         self.logger = getLogger(__name__)
         self.Tools = Tools.Tools(config)
+        self.week = week
         self.category_dic, self.abbr_display = self.Tools.get_category_dic()
 
     def output_work_life_result(self, work_result_info, life_result_info, time_min, time_max):
@@ -112,7 +113,8 @@ class ProcessGcalData:
         )
 
         fig = go.Figure(data=data, layout=layout)
-        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'life_work_result.html', auto_open=False)
+        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] +
+                              'life_work_result_{}.html'.format(self.week), auto_open=False)
 
     def output_work_plan_result(self, work_plan_info, work_result_info, time_min, time_max):
         """仕事に関する項目に関して予定時間に対する実績時間の進捗状況を集計し、htmlファイルを出力"""
@@ -194,7 +196,7 @@ class ProcessGcalData:
 
         trace_r = go.Bar(
             x=y_r,
-            y=[self.twrap(_x+ ', ' + abbr_note_dic[_x]) for _x in x],
+            y=[self.twrap(_x + ', ' + abbr_note_dic[_x]) for _x in x],
             text=['{0},{1}'.format(r, p) for r, p in zip(self.format_value_label(y_r), y_progress)],
             textposition='auto',
             marker=dict(color=['rgb(255,200,132)' if _x in complete_tasks else 'rgb(255,255,255)' for _x in x],
@@ -232,9 +234,9 @@ class ProcessGcalData:
                                   (time_max - dt.timedelta(days=1)).strftime('%m/%d(%a)'),
                                   int(sum(y_r) // 60), int(sum(y_r) % 60),
                                   int(sum(y_p) // 60), int(sum(y_p) % 60),
-                                  round(sum(y_r)*100/sum(y_p)))})
-        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'work_plan_result.html', auto_open=False,
-                config={'displayModeBar': False})
+                                  round(sum(y_r)*100/sum(y_p)) if sum(y_p) > 0 else '-')})
+        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'work_plan_result_{}.html'.format(self.week),
+                auto_open=False, config={'displayModeBar': False})
 
     @staticmethod
     def format_value_label(vl):
@@ -252,11 +254,15 @@ class ProcessGcalData:
 
         return labels
 
-    def output_life_timeline(self, work_result_info, life_result_info, time_min, time_max):
-        tl_dic = self.summarize_life_timeline(work_result_info=work_result_info, life_result_info=life_result_info)
+    def output_life_timeline(self, work_result_info, life_result_info, evaluation_info, time_min, time_max):
+        tl_dic = self.summarize_life_timeline(work_result_info=work_result_info, life_result_info=life_result_info,
+                                              evaluation_info=evaluation_info)
         self.update_life_timeline(tl_dic, time_min, time_max)
 
-    def summarize_life_timeline(self, work_result_info, life_result_info):
+    def summarize_life_timeline(self, work_result_info, life_result_info, evaluation_info):
+
+        ev_dic = self.summarize_evaluation(evaluation_info)
+        mark_dic = {1: '×', 2: '▲', 3: '△', 4: '〇', 5: '◎'}
 
         # まずは1日単位に分割
         events = work_result_info + life_result_info
@@ -268,6 +274,9 @@ class ProcessGcalData:
         date_event_dic = defaultdict(list)
         while _st_time < first_date + dt.timedelta(days=7):
             for event in events:
+                if 'summary' not in event:
+                    continue
+
                 if 'dateTime' not in event['start']:
                     continue
 
@@ -285,18 +294,31 @@ class ProcessGcalData:
                 cate = self.decide_category(event)
                 length = self.get_length(_date, event)
                 base = self.get_base(_date, event)
-                tl_dic[cate]['date'].append(_date.strftime('%m-%d(%a)'))
+                tl_dic[cate]['date'].append(_date.strftime('%m-%d(%a)') +\
+                            '<br>{}'.format('-'.join([mark_dic[v] for v in ev_dic.get(_date, [])])))
                 tl_dic[cate]['length'].append(length)
                 tl_dic[cate]['base'].append(base)
 
         return tl_dic
 
     @staticmethod
+    def summarize_evaluation(evaluation_info):
+
+        dic = {}
+        for event in evaluation_info:
+            evaluation = [int(v) for v in event['summary'].split(',')]
+            _date = dt.datetime.strptime(event['start']['date'], '%Y-%m-%d')
+            dic[_date] = evaluation
+
+        return dic
+
+    @staticmethod
     def decide_category(event):
         cate_list = event['summary'].split('/')
+
         if cate_list[0] in ['w', 'W']:
             return 'work'
-        elif cate_list[0] in ['l', 's', 'fw', 'i', 'L', 'S', 'Fw', 'I', 'F']:
+        elif cate_list[0] in ['l', 's', 'fw', 'i', 'L', 'S', 'Fw', 'I', 'F', 'f']:
             return 'private'
         elif event['summary'] in ['睡眠']:
             return 'sleep'
@@ -339,7 +361,10 @@ class ProcessGcalData:
             title='time input<br>{0}-{1}'.format(time_min.strftime('%Y/%m/%d(%a)'),
                                                    (time_max - dt.timedelta(days=1)).strftime('%Y/%m/%d(%a)')),
             barmode='stack',
-            # legend=dict(orientation='h'),
+            # legend={"orientation": "h",
+            #         "xanchor": "center",
+            #         "y": 1.1,
+            #         "x": 0.5},
             margin={'t': 100, 'b': 100},
             yaxis=dict(
                 autorange='reversed',
@@ -348,11 +373,11 @@ class ProcessGcalData:
                 gridcolor='rgb(97,97,97)',
                 gridwidth=0.5,
                 ),
-
         )
 
         fig = go.Figure(data=data, layout=layout)
-        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'life_timeline.html', auto_open=False)
+        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] +
+                              'life_timeline_{}.html'.format(self.week), auto_open=False)
 
     @staticmethod
     def twrap(txt):

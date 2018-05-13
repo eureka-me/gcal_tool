@@ -41,7 +41,7 @@ class GetGcalInfo:
         self.logger = getLogger(__name__)
         self.Tools = Tools.Tools(config)
 
-    def get_gcal_info(self, calendar_id, time_min, time_max):
+    def get_gcal_info(self, calendar_id, time_min, time_max, evaluation=False):
         """google calendarデータを取得する"""
 
         credentials = self.get_credentials()
@@ -61,30 +61,34 @@ class GetGcalInfo:
             self.logger.error(e)
             events = []
 
-        _events = []
-        for event in events:
-            if 'dateTime' not in event['start']:
-                continue
+        if evaluation is False:
+            _events = []
+            for event in events:
+                if 'dateTime' not in event['start']:
+                    continue
 
-            st_time = self.Tools.convert_datetime(event['start']['dateTime'])
-            en_time = self.Tools.convert_datetime(event['end']['dateTime'])
-            if time_min <= st_time < time_max:
-                _events.append(event)
-            elif time_min < en_time <= time_max:
-                event['start']['dateTime'] = time_min.strftime('%Y-%m-%dT%H:%M:%S+09:00')
-                _events.append(event)
+                st_time = self.Tools.convert_datetime(event['start']['dateTime'])
+                en_time = self.Tools.convert_datetime(event['end']['dateTime'])
+                if time_min <= st_time < time_max:
+                    if time_max < en_time:
+                        event['end']['dateTime'] = time_max.strftime('%Y-%m-%dT%H:%M:%S+09:00')
+                    _events.append(event)
+                elif time_min < en_time <= time_max:
+                    event['start']['dateTime'] = time_min.strftime('%Y-%m-%dT%H:%M:%S+09:00')
+                    _events.append(event)
+        else:
+            _events = events
 
         return _events
 
     @staticmethod
-    def get_time_min_max():
+    def get_time_min_max(_datetime):
         """集計の開始・終了時刻の取得"""
         # 土曜日始まり！！
 
         # time_minの生成
-        now = dt.datetime.now()
-        _year, _month, _day = now.year, now.month, now.day
-        days_diff = (now.weekday() + 2) % 7
+        _year, _month, _day = _datetime.year, _datetime.month, _datetime.day
+        days_diff = (_datetime.weekday() + 2) % 7
         saturday = dt.datetime(_year, _month, _day) - dt.timedelta(days=days_diff)
         time_min = saturday
         time_max = saturday + dt.timedelta(days=7)
