@@ -8,7 +8,6 @@ from logging import getLogger, StreamHandler, DEBUG, FileHandler, Formatter
 
 from module import GetGcalInfo as ggi
 from module import ProcessGcalData as pgd
-from module import UploadFile as uf
 
 # gcal_manager.Main
 # Date: 2018/04/14

@@ -226,15 +226,20 @@ class ProcessGcalData:
                            'legend': dict(orientation='h')
                            })
 
-        fig.layout.margin.update({'t': 100, 'r': 30, 'l': 100})
-        fig.layout.update({'title': 'plan result<br>{0}-{1}<br>{2}h {3}min / {4}h {5}min ({6}%)'
-                          .format(time_min.strftime('%Y/%m/%d(%a)'),
-                                  (time_max - dt.timedelta(days=1)).strftime('%m/%d(%a)'),
-                                  int(sum(y_r) // 60), int(sum(y_r) % 60),
-                                  int(sum(y_p) // 60), int(sum(y_p) % 60),
-                                  round(sum(y_r)*100/sum(y_p)))})
-        po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'work_plan_result.html', auto_open=False,
-                config={'displayModeBar': False})
+        try:
+            fig.layout.margin.update({'t': 100, 'r': 30, 'l': 100})
+            fig.layout.update({'title': 'plan result<br>{0}-{1}<br>{2}h {3}min / {4}h {5}min ({6}%)'
+                              .format(time_min.strftime('%Y/%m/%d(%a)'),
+                                      (time_max - dt.timedelta(days=1)).strftime('%m/%d(%a)'),
+                                      int(sum(y_r) // 60), int(sum(y_r) % 60),
+                                      int(sum(y_p) // 60), int(sum(y_p) % 60),
+                                      round(sum(y_r)*100/sum(y_p)))})
+            po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'work_plan_result.html', auto_open=False,
+                    config={'displayModeBar': False})
+        except:
+            import traceback
+            traceback.print_exc()
+            pass
 
     @staticmethod
     def format_value_label(vl):
