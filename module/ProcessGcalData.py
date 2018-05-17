@@ -1,7 +1,7 @@
 #! env python
 # -*- coding: utf-8 -*-
 
-import csv
+import csv, os
 import datetime as dt
 from logging import getLogger
 from collections import defaultdict
@@ -122,7 +122,7 @@ class ProcessGcalData:
         update, plan_dic, result_dic, abbr_note_dic, complete_tasks\
             = self.summarize_work_plan_result(work_plan_info, work_result_info)
         if update:
-            self.update_work_plan_result_html(plan_dic, result_dic, time_min, time_max, abbr_note_dic, complete_tasks)
+            self.update_work_plan_result(plan_dic, result_dic, time_min, time_max, abbr_note_dic, complete_tasks)
 
     def summarize_work_plan_result(self, work_plan_info, work_result_info):
         """仕事に関する各項目に対する予定時間に対する実績時間の進捗状況を集計し、csv出力"""
@@ -172,8 +172,8 @@ class ProcessGcalData:
 
         return complete_tasks, work_result_info
 
-    def update_work_plan_result_html(self, plan_dic, result_dic, time_min, time_max, abbr_note_dic, complete_tasks):
-        """htmlファイルを更新"""
+    def update_work_plan_result(self, plan_dic, result_dic, time_min, time_max, abbr_note_dic, complete_tasks):
+        """work_life_plna関連のファイルを更新"""
 
         x = sorted(list(set([k[1] for k in plan_dic.keys() if k[0] == 'w']
                             + [k[1] for k in result_dic.keys() if k[0] == 'w'])), reverse=True)
@@ -181,6 +181,11 @@ class ProcessGcalData:
         y_p = [plan_dic[('w', c)] for c in x]
         y_r = [result_dic[('w', c)] for c in x]
         y_progress = ['{}%'.format(round(r*100/p)) if p > 0 else '-%' for p, r in zip(y_p, y_r)]
+
+        self.update_work_plan_result_html(x, y_p, y_r, y_progress, time_min, time_max, abbr_note_dic, complete_tasks)
+        self.update_work_plan_result_txt(x, y_p, y_r, y_progress, abbr_note_dic)
+
+    def update_work_plan_result_html(self, x, y_p, y_r, y_progress, time_min, time_max, abbr_note_dic, complete_tasks):
 
         trace_p = go.Bar(
             x=y_p,
@@ -237,6 +242,43 @@ class ProcessGcalData:
                                   round(sum(y_r)*100/sum(y_p)) if sum(y_p) > 0 else '-')})
         po.plot(fig, filename=self.config['GENERAL']['UPLOAD_DIR'] + 'work_plan_result_{}.html'.format(self.week),
                 auto_open=False, config={'displayModeBar': False})
+
+    def update_work_plan_result_txt(self, x, y_p, y_r, y_progress, abbr_note_dic):
+
+        output_file_path = self.config['GENERAL']['UPLOAD_DIR'] \
+                           + 'work_plan_result/work_plan_result_{}.txt'.format(self.week)
+
+        # 更新情報を{(コード, 名称): {'p_time': , 'r_time': , 'note': }, ...}という辞書に格納
+        new_dic = defaultdict(lambda: {'p_time': None, 'r_time': None, 'progress': None, 'note': '-'})
+        for _task, _p_time, _r_time, _prog in zip(x, y_p, y_r, y_progress):
+            new_dic[(_task, abbr_note_dic[_task])]['p_time'] = _p_time
+            new_dic[(_task, abbr_note_dic[_task])]['r_time'] = _r_time
+            new_dic[(_task, abbr_note_dic[_task])]['progress'] = _prog
+
+        # 既存のファイルを読み込み、{(コード, 名称): {'p_time': , 'r_time': , 'note': }, ...}という辞書に格納
+        existing_dic = defaultdict(lambda: {'p_time': None, 'r_time': None, 'progress': None, 'note': '-'})
+        if os.path.exists(output_file_path):
+            with open(output_file_path, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                header = next(reader)
+                ix = {h: i for i, h in enumerate(header)}
+                for row in reader:
+                    existing_dic[(row[ix['task_code']], row[ix['task_name']])]['note'] = row[ix['note']]
+
+        # 既存のファイルの情報と更新後の情報を比較する
+        for tpl, _dic in existing_dic.items():
+            if _dic['note'] != '-':
+                if tpl not in new_dic:  # もし既存ファイルのタスク情報が更新情報に含まれていなければ、[!]というラベルを付与
+                    tpl[0] = '[!]' + tpl[0]
+                new_dic[tpl]['note'] = _dic['note']
+
+        # 更新情報の辞書を出力
+        fout = open(output_file_path, 'w', encoding='UTF-8')
+        writer = csv.writer(fout, delimiter=',', lineterminator='\n')
+        writer.writerow(['task_code', 'task_name', 'plan_time', 'result_time', 'progress', 'note'])
+        for (task_code, task_name), _dic in new_dic.items():
+            writer.writerow([task_code, task_name, _dic['p_time'], _dic['r_time'], _dic['progress'], _dic['note']])
+        fout.close()
 
     @staticmethod
     def format_value_label(vl):
