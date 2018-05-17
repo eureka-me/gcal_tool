@@ -262,7 +262,7 @@ class ProcessGcalData:
     def summarize_life_timeline(self, work_result_info, life_result_info, evaluation_info):
 
         ev_dic = self.summarize_evaluation(evaluation_info)
-        mark_dic = {1: '×', 2: '▲', 3: '△', 4: '〇', 5: '◎'}
+        mark_dic = {'1': '×', '2': '▲', '3': '△', '4': '〇', '5': '◎'}
 
         # まずは1日単位に分割
         events = work_result_info + life_result_info
@@ -295,7 +295,7 @@ class ProcessGcalData:
                 length = self.get_length(_date, event)
                 base = self.get_base(_date, event)
                 tl_dic[cate]['date'].append(_date.strftime('%m-%d(%a)') +\
-                            '<br>{}'.format('-'.join([mark_dic[v] for v in ev_dic.get(_date, [])])))
+                            '<br>{}'.format('-'.join([mark_dic.get(v, '') for v in ev_dic.get(_date, [])])))
                 tl_dic[cate]['length'].append(length)
                 tl_dic[cate]['base'].append(base)
 
@@ -306,7 +306,7 @@ class ProcessGcalData:
 
         dic = {}
         for event in evaluation_info:
-            evaluation = [int(v) for v in event['summary'].split(',')]
+            evaluation = [v for v in event['summary'].split(',')]
             _date = dt.datetime.strptime(event['start']['date'], '%Y-%m-%d')
             dic[_date] = evaluation
 
