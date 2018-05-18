@@ -251,9 +251,10 @@ class ProcessGcalData:
         # 更新情報を{(コード, 名称): {'p_time': , 'r_time': , 'note': }, ...}という辞書に格納
         new_dic = defaultdict(lambda: {'p_time': None, 'r_time': None, 'progress': None, 'note': '-'})
         for _task, _p_time, _r_time, _prog in zip(x, y_p, y_r, y_progress):
-            new_dic[(_task, abbr_note_dic[_task])]['p_time'] = _p_time
-            new_dic[(_task, abbr_note_dic[_task])]['r_time'] = _r_time
-            new_dic[(_task, abbr_note_dic[_task])]['progress'] = _prog
+            _task_mod = '■' + _task
+            new_dic[(_task_mod, abbr_note_dic[_task])]['p_time'] = _p_time
+            new_dic[(_task_mod, abbr_note_dic[_task])]['r_time'] = _r_time
+            new_dic[(_task_mod, abbr_note_dic[_task])]['progress'] = _prog
 
         # 既存のファイルを読み込み、{(コード, 名称): {'p_time': , 'r_time': , 'note': }, ...}という辞書に格納
         existing_dic = defaultdict(lambda: {'p_time': None, 'r_time': None, 'progress': None, 'note': '-'})
@@ -360,8 +361,12 @@ class ProcessGcalData:
 
         if cate_list[0] in ['w', 'W']:
             return 'work'
-        elif cate_list[0] in ['l', 's', 'fw', 'i', 'L', 'S', 'Fw', 'I', 'F', 'f']:
+        elif cate_list[0] in ['l', 'fw', 'i', 'L', 'Fw', 'I', 'F', 'f']:
             return 'private'
+        elif cate_list[0] in ['s', 'S']:
+            return 'skill'
+        elif cate_list[0] in ['r', 'R']:
+            return 'r'
         elif event['summary'] in ['睡眠']:
             return 'sleep'
         else:
@@ -381,7 +386,8 @@ class ProcessGcalData:
     def update_life_timeline(self, tl_dic, time_min, time_max):
 
         color_dic = {'work': 'rgb(218,98,144)', 'private': 'rgb(243,199,89)',
-                     'other': 'rgb(164,197,32)', 'sleep': 'rgb(69,161,207)'}
+                     'skill': 'rgb(164,197,32)', 'r': 'rgb(111,138,162)',
+                     'other': 'rgb(192,192,192)', 'sleep': 'rgb(69,161,207)'}
 
         data = []
         for cate, _dic in tl_dic.items():
