@@ -38,3 +38,8 @@ class Tools:
     @staticmethod
     def convert_datetime(datetime_str):
         return dt.datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S+09:00')
+
+    @staticmethod
+    def get_week(_datetime):
+        return (_datetime - dt.timedelta((_datetime.weekday() + 2) % 7)).strftime('%Y%m%d')
+

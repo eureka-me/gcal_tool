@@ -68,6 +68,13 @@ class ProcessGcalData:
 
             elif cate_scope < 0:
                 cate = tuple(event['summary'].split('/'))
+
+            elif cate_scope == 10:
+                _tuple = tuple(event['summary'].split('/')[:2])
+                if _tuple[0] not in ['w', 'W']:
+                    continue
+                cate = tuple([_tuple[1][:2], event['start']['dateTime'][:10]])
+
             else:
                 raise Exception('cate_scope is wrong.')
 
@@ -76,7 +83,7 @@ class ProcessGcalData:
 
             if cate_scope == 1:
                 dic[self.category_dic[cate]['abbr']] += _min
-            elif cate_scope == 2:
+            elif cate_scope == 2 or cate_scope == 10:
                 dic[cate] += _min
 
         return dic

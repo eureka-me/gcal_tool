@@ -9,6 +9,7 @@ import datetime as dt
 
 from module import GetGcalInfo as ggi
 from module import ProcessGcalData as pgd
+from module.Tools import Tools as tl
 
 # gcal_manager.Main
 # Date: 2018/04/14
@@ -61,14 +62,9 @@ def output(time_min, time_max, week):
                                          evaluation_info=evaluation_info,
                                          time_min=time_min, time_max=time_max)
 
-
-def get_week(_datetime):
-    return (_datetime - dt.timedelta((_datetime.weekday() + 2) % 7)).strftime('%Y%m%d')
-
-
 # 出力する週リストの取得
 now = dt.datetime.now()
-this_week = get_week(now)
+this_week = tl.get_week(now)
 
 existing_files = os.listdir(config['GENERAL']['UPLOAD_DIR'])
 existing_weeks = set([filename.replace('.html', '')[-8:] for filename in existing_files if '.html' in filename])
@@ -76,7 +72,7 @@ existing_weeks = set([filename.replace('.html', '')[-8:] for filename in existin
 if this_week in existing_weeks:
     target_weeks = [this_week]
 else:
-    previous_week = get_week(now - dt.timedelta(days=7))
+    previous_week = tl.get_week(now - dt.timedelta(days=7))
     target_weeks = [previous_week, this_week]
 
 # target_weeks = ['20180414', '20180421', '20180505', '20180512']
