@@ -79,7 +79,14 @@ class GetGcalInfo:
         else:
             _events = events
 
-        return _events
+        # latest_updateの取得
+        if len(_events) > 0:
+            latest_update = max([dt.datetime.strptime(e['updated'][:-5], '%Y-%m-%dT%H:%M:%S') for e in _events]) \
+                            + dt.timedelta(hours=9)
+        else:
+            latest_update = dt.datetime(1990, 1, 1, 0, 0, 0)
+
+        return _events, latest_update
 
     @staticmethod
     def get_time_min_max(_datetime):

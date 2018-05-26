@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import configparser
 from logging import getLogger, StreamHandler, DEBUG, FileHandler, Formatter
 import datetime as dt
@@ -38,29 +37,43 @@ GetGcalInfo = ggi.GetGcalInfo(config)
 
 def output(time_min, time_max, week):
     # Google Calendar情報の取得
-    work_plan_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['WORK_PLAN_CAL_ID'],
+    work_plan_info, latest_update_wp = GetGcalInfo.get_gcal_info(config['RETRIEVE']['WORK_PLAN_CAL_ID'],
                                                time_min=time_min, time_max=time_max)
-    work_result_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['WORK_RESULT_CAL_ID'],
+    work_result_info, latest_update_wr = GetGcalInfo.get_gcal_info(config['RETRIEVE']['WORK_RESULT_CAL_ID'],
                                                  time_min=time_min, time_max=time_max)
     # life_plan_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['LIFE_PLAN_CAL_ID'])
-    life_result_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['LIFE_RESULT_CAL_ID'],
+    life_result_info, latest_update_lr = GetGcalInfo.get_gcal_info(config['RETRIEVE']['LIFE_RESULT_CAL_ID'],
                                                  time_min=time_min, time_max=time_max)
 
-    evaluation_info = GetGcalInfo.get_gcal_info(config['RETRIEVE']['EVALUATION_CAL_ID'],
+    evaluation_info, latest_update_e = GetGcalInfo.get_gcal_info(config['RETRIEVE']['EVALUATION_CAL_ID'],
                                                 time_min=time_min, time_max=time_max,
                                                 evaluation=True)
 
-    # 各カテゴリに対する時間投入量の集計し、csvファイルを出力（Life）
-    ProcessGcalData = pgd.ProcessGcalData(config, week)
-    ProcessGcalData.output_work_life_result(work_result_info=work_result_info, life_result_info=life_result_info,
-                                            time_min=time_min, time_max=time_max)
+    latest_update = max(latest_update_wp, latest_update_wr, latest_update_lr, latest_update_e)
 
-    ProcessGcalData.output_work_plan_result(work_plan_info=work_plan_info, work_result_info=work_result_info,
-                                            time_min=time_min, time_max=time_max)
+    last_update_path = config['GENERAL']['LAST_UPDATE_PATH']
+    if os.path.exists(last_update_path):
+        last_update = dt.datetime.strptime(open(last_update_path).read(), '%Y%m%d%H%M%S')
+    else:
+        last_update = dt.datetime(1990, 1, 1, 0, 0, 0)
 
-    ProcessGcalData.output_life_timeline(work_result_info=work_result_info, life_result_info=life_result_info,
-                                         evaluation_info=evaluation_info,
-                                         time_min=time_min, time_max=time_max)
+    if latest_update > last_update:
+        # 各カテゴリに対する時間投入量の集計し、csvファイルを出力（Life）
+        ProcessGcalData = pgd.ProcessGcalData(config, week)
+        ProcessGcalData.output_work_life_result(work_result_info=work_result_info, life_result_info=life_result_info,
+                                                time_min=time_min, time_max=time_max)
+
+        ProcessGcalData.output_work_plan_result(work_plan_info=work_plan_info, work_result_info=work_result_info,
+                                                time_min=time_min, time_max=time_max)
+
+        ProcessGcalData.output_life_timeline(work_result_info=work_result_info, life_result_info=life_result_info,
+                                             evaluation_info=evaluation_info,
+                                             time_min=time_min, time_max=time_max)
+
+        open(last_update_path, 'w').write(latest_update.strftime('%Y%m%d%H%M%S'))
+
+    else:
+        logger.debug('No update detected.')
 
 # 出力する週リストの取得
 now = dt.datetime.now()
@@ -76,7 +89,7 @@ else:
     target_weeks = [previous_week, this_week]
 
 # target_weeks = ['20180414', '20180421', '20180505', '20180512']
-# target_weeks = ['20180414']
+# target_weeks = ['20180519']
 
 # 各週を出力
 for week in target_weeks:
