@@ -50,28 +50,33 @@ class ProcessGcalData:
         return True
 
     def summarize_calendar_info(self, calendar_info, cate_scope, dic):
-        """カレンダーオブジェクトを受け取り、辞書に格納"""
+        """
+        カレンダーオブジェクトを受け取り、辞書に格納
+        cate 1: work_life_result
+        cate 2: work_plan_result
+        cate 10: nippou_file
+        """
 
         for event in calendar_info:
             if 'summary' not in event:
                 continue
 
             if cate_scope == 1:
-                cate = event['summary'].split('/')[0]
+                cate = self.split_summary(event['summary'])[0]
                 if cate not in self.category_dic.keys():
                     continue
 
             elif cate_scope == 2:
-                cate = tuple(event['summary'].split('/')[:2])
+                cate = tuple(self.split_summary(event['summary'])[:2])
                 if cate[0] not in self.category_dic.keys():
                     continue
 
             elif cate_scope < 0:
-                cate = tuple(event['summary'].split('/'))
+                cate = tuple(self.split_summary(event['summary']))
 
             elif cate_scope == 10:
 
-                _tuple = tuple(event['summary'].split('/')[:2])
+                _tuple = tuple(self.split_summary(event['summary'])[:2])
                 if _tuple[0] not in ['w', 'W']:
                     continue
                 cate = tuple([_tuple[1][:2], event['start']['dateTime'][:10]])
@@ -88,6 +93,22 @@ class ProcessGcalData:
                 dic[cate] += _min
 
         return dic
+
+    @staticmethod
+    def split_summary(summary):
+        """
+        カレンダー情報のsummary情報を確認し、前の記述(/を含む)ならば、前の切り方で切り、新しい記述(.を含む)ならば、新しい切り方で切る
+        """
+
+        if '/' in summary:
+            return summary.split('/')
+
+        elif '.' in summary:
+            lst = summary.split('.')
+            return [lst[0][0], lst[0][1:]] + lst[1:]
+
+        else:
+            return [summary]
 
     def update_summarize_work_life_result_html(self, time_min, time_max):
         """各項目に対する時間投入量の集計結果ファイルの更新"""
@@ -145,20 +166,19 @@ class ProcessGcalData:
         # TODO: カレンダー情報に更新があったかどうかの判定機能
         return True, plan_dic, result_dic, abbr_note_dic, complete_tasks
 
-    @staticmethod
-    def get_abbr_note_dic(work_plan_info, work_result_info):
+    def get_abbr_note_dic(self, work_plan_info, work_result_info):
         """abbrのnoteを示す辞書の取得"""
 
         dic = defaultdict(str)
         for event in work_plan_info:
-            _event = event['summary'].split('/')
+            _event = self.split_summary(event['summary'])
             if _event[0] != 'w':
                 continue
             if dic[_event[1]] == '':
                 dic[_event[1]] = _event[2]
 
         for event in work_result_info:
-            _event = event['summary'].split('/')
+            _event = self.split_summary(event['summary'])
             if _event[0] != 'w':
                 continue
             if dic[_event[1]] == '':
@@ -166,12 +186,11 @@ class ProcessGcalData:
 
         return dic
 
-    @staticmethod
-    def get_complete_tasks(work_result_info):
+    def get_complete_tasks(self, work_result_info):
 
         complete_tasks = []
         for i, event in enumerate(work_result_info):
-            _event = event['summary'].split('/')
+            _event = self.split_summary(event['summary'])
             if _event[0] != 'w':
                 continue
             if '@d@' in event['summary']:
@@ -363,9 +382,8 @@ class ProcessGcalData:
 
         return dic
 
-    @staticmethod
-    def decide_category(event):
-        cate_list = event['summary'].split('/')
+    def decide_category(self, event):
+        cate_list = self.split_summary(event['summary'])
 
         if cate_list[0] in ['w', 'W']:
             return 'work'
