@@ -70,6 +70,7 @@ class ProcessGcalData:
                 cate = tuple(event['summary'].split('/'))
 
             elif cate_scope == 10:
+
                 _tuple = tuple(event['summary'].split('/')[:2])
                 if _tuple[0] not in ['w', 'W']:
                     continue
