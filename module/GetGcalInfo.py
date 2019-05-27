@@ -48,18 +48,17 @@ class GetGcalInfo:
         http = credentials.authorize(httplib2.Http())
         service = discovery.build('calendar', 'v3', http=http)
 
-        _time_min = (time_min - dt.timedelta(hours=9+6)).isoformat() + 'Z'
-        _time_max = (time_max - dt.timedelta(hours=9)).isoformat() + 'Z'
+        time_min_max_list = self.get_time_min_max_list(time_min, time_max)
+        events = []
+        for _time_min, _time_max in time_min_max_list:
 
-        try:
+            _time_min_s = (_time_min - dt.timedelta(hours=9+6)).isoformat() + 'Z'
+            _time_max_s = (_time_max - dt.timedelta(hours=9)).isoformat() + 'Z'
+
             eventsResult = service.events().list(
-                calendarId=calendar_id, timeMin=_time_min, timeMax=_time_max, singleEvents=True,
+                calendarId=calendar_id, timeMin=_time_min_s, timeMax=_time_max_s, singleEvents=True,
                 orderBy='startTime').execute()
-            events = eventsResult.get('items', [])
-
-        except Exception as e:
-            self.logger.error(e)
-            events = []
+            events.extend(eventsResult.get('items', []))
 
         if evaluation is False:
             _events = []
@@ -131,3 +130,13 @@ class GetGcalInfo:
             print('Storing credentials to ' + credential_path)
         return credentials
 
+    @staticmethod
+    def get_time_min_max_list(time_min, time_max):
+
+        time_min_temp, lst = time_min, []
+        while (time_max - time_min_temp).days > 30:
+            lst.append((time_min_temp, time_min_temp + dt.timedelta(days=30)))
+            time_min_temp += dt.timedelta(days=30)
+        lst.append((time_min_temp, time_max))
+
+        return lst

@@ -8,6 +8,7 @@ __date__ = "2018/11/05"
 
 import configparser
 import xlrd
+import openpyxl
 from datetime import datetime, timedelta
 from collections import defaultdict
 
@@ -20,12 +21,13 @@ config.read_file(open('./config.conf', 'r', encoding='UTF-8'))
 
 GetGcalInfo = ggi.GetGcalInfo(config)
 
+
 def main():
 
     # トレース対象プロジェクトの取得（エクセルを読み込んで作成）
     projects, abbrs, time_min = defaultdict(lambda: defaultdict(dict)), [], datetime(2100, 1, 1)
     proj_file_dir = config['GENERAL']['PROJECT_DIR']
-    proj_book = xlrd.open_workbook(proj_file_dir + 'project.xlsx')
+    proj_book = xlrd.open_workbook(proj_file_dir + 'src.xlsx')
     for sheet_name in proj_book.sheet_names():
         if sheet_name == 'prj名':
             continue
@@ -64,17 +66,38 @@ def main():
             _date = datetime.strptime(date_str, '%Y-%m-%d')
             for (st_date, en_date) in projects[abbr].keys():
                 if st_date <= _date <= en_date:
-                    if not 'result' in projects[abbr][(st_date, en_date)]:
+                    if 'result' not in projects[abbr][(st_date, en_date)]:
+                        print(1)
                         projects[abbr][(st_date, en_date)]['result'] = defaultdict(int)
                     projects[abbr][(st_date, en_date)]['result'][_date] += _min
+                    print(2)
 
-    ### 出力
     # excelファイルの上書き
-    pass
+    wb = openpyxl.load_workbook(proj_file_dir + 'src.xlsx')
+    for abbr, _dic in projects.items():
+        for (st_date, en_date), _dic2 in _dic.items():
+            result_nrow = _dic2['実績']
+
+            # 列の位置を返す辞書
+            i, col_dic = 0, {}
+            st_week = st_date - timedelta(days=st_date.weekday())
+            for i in range(30):
+                col_dic[st_week + timedelta(days=i * 7)] = {'col': 4 + i, 'time': 0}
+                i += 1
+
+            for d, t in _dic2['result'].items():
+                d_w = d - timedelta(days=d.weekday())
+                col_dic[d_w]['time'] += t / 60
+
+            for d_w, _dic3 in col_dic.items():
+                wb[_dic2['sheet_name']].cell(row=result_nrow + 1, column=_dic3['col'] + 1, value=_dic3['time'])
+
+    wb.save(proj_file_dir + 'src.xlsx')
 
 
 def excel_date(num):
     return datetime(1899, 12, 30) + timedelta(days=num)
+
 
 if __name__ == '__main__':
     main()
